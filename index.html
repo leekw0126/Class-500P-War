@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리 동네 예산 전쟁: 500포인트의 선택</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Firebase SDK (v9 Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="bg-amber-400 text-indigo-950 font-black px-2.5 py-1 rounded text-sm tracking-wide">○○시</span>
+                <h1 class="text-xl font-bold tracking-tight">우리 동네 예산 전쟁 <span class="text-xs font-normal text-indigo-200">| 중1 사회</span></h1>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <span id="p2pStatus" class="text-xs bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> 실시간 기기 연동 중
+                </span>
+                <span id="currentViewBadge" class="text-xs bg-indigo-800 px-3 py-1 rounded-full text-indigo-200 border border-indigo-700">
+                    학생용 화면
+                </span>
+                <button id="toggleRoleBtn" type="button" onclick="toggleView()" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-4 py-1.5 rounded-lg text-sm transition shadow flex items-center gap-1.5 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 10V7m6 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                    </svg>
+                    교사 대시보드 전환
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+        <!-- ==================== STUDENT VIEW ==================== -->
+        <section id="studentView" class="space-y-6">
+            
+            <!-- Progress Indicator -->
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex justify-between items-center text-xs font-bold text-slate-400">
+                <div id="stepIndicator1" class="flex items-center gap-2 text-indigo-600">
+                    <span class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center">1</span>
+                    <span>모둠 역할 선택</span>
+                </div>
+                <div class="h-0.5 flex-1 mx-3 bg-slate-200"></div>
+                <div id="stepIndicator2" class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center">2</span>
+                    <span>주장 & 조건 작성</span>
+                </div>
+                <div class="h-0.5 flex-1 mx-3 bg-slate-200"></div>
+                <div id="stepIndicator3" class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center">3</span>
+                    <span>예산 배분 (500 PT)</span>
+                </div>
+            </div>
+
+            <!-- STEP 1: 역할 선택 (5개 모둠) -->
+            <div id="studentStep1" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-3xl mx-auto space-y-6">
+                <div class="text-center space-y-2">
+                    <h2 class="text-2xl font-extrabold text-slate-800">모둠 역할을 선택하세요</h2>
+                    <p class="text-sm text-slate-500">소속된 모둠의 대표 역할을 클릭한 후 아래 [다음] 버튼을 누르세요.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <button type="button" onclick="selectRole('A')" id="roleOptA" class="role-opt-btn p-4 rounded-xl border-2 text-left border-slate-200 hover:border-indigo-500 transition space-y-1 cursor-pointer">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">A모둠</span>
+                        <span class="text-base font-bold text-slate-800 block">청소년 대표</span>
+                        <span class="text-xs text-slate-500 block">교육 · 아동 · 청소년 복지</span>
+                    </button>
+                    <button type="button" onclick="selectRole('B')" id="roleOptB" class="role-opt-btn p-4 rounded-xl border-2 text-left border-slate-200 hover:border-indigo-500 transition space-y-1 cursor-pointer">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">B모둠</span>
+                        <span class="text-base font-bold text-slate-800 block">학부모 대표</span>
+                        <span class="text-xs text-slate-500 block">보육 · 안전 · 돌봄</span>
+                    </button>
+                    <button type="button" onclick="selectRole('C')" id="roleOptC" class="role-opt-btn p-4 rounded-xl border-2 text-left border-slate-200 hover:border-indigo-500 transition space-y-1 cursor-pointer">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">C모둠</span>
+                        <span class="text-base font-bold text-slate-800 block">노년 대표</span>
+                        <span class="text-xs text-slate-500 block">노인 복지 · 이동권 · 건강</span>
+                    </button>
+                    <button type="button" onclick="selectRole('D')" id="roleOptD" class="role-opt-btn p-4 rounded-xl border-2 text-left border-slate-200 hover:border-indigo-500 transition space-y-1 cursor-pointer">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">D모둠</span>
+                        <span class="text-base font-bold text-slate-800 block">지역상인 대표</span>
+                        <span class="text-xs text-slate-500 block">지역 경제 · 전통시장 · 상권</span>
+                    </button>
+                    <button type="button" onclick="selectRole('E')" id="roleOptE" class="role-opt-btn p-4 rounded-xl border-2 text-left border-slate-200 hover:border-indigo-500 transition space-y-1 cursor-pointer sm:col-span-2 md:col-span-1">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">E모둠</span>
+                        <span class="text-base font-bold text-slate-800 block">환경·생태 대표</span>
+                        <span class="text-xs text-slate-500 block">탄소중립 · 공원 · 자원순환</span>
+                    </button>
+                </div>
+
+                <button type="button" onclick="goToStep(2)" id="btnStep1Next" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow text-base cursor-pointer">
+                    다음 단계로 이동 (주장 작성)
+                </button>
+            </div>
+
+            <!-- STEP 2: 핵심 요구 및 주장 작성 -->
+            <div id="studentStep2" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-2xl mx-auto space-y-6">
+                <div class="border-b border-slate-100 pb-4">
+                    <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider" id="step2GroupBadge">모둠 미선택</span>
+                    <h2 class="text-xl font-bold text-slate-800 mt-1">핵심 요구 및 협상 조건 작성</h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">모둠의 핵심 요구 및 주장 근거</label>
+                        <textarea id="inputDemand" rows="4" class="w-full text-sm p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="내용을 입력하세요. 예: 청소년 전용 휴식 및 문화 공간 예산을 최우선 반영해야 합니다."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">양보 가능한 조건 (협상 안)</label>
+                        <textarea id="inputConcession" rows="4" class="w-full text-sm p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="내용을 입력하세요. 예: 노인 복지 예산을 일정 부분 인정하되 청소년 공간 시설 축소는 불가합니다."></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="goToStep(1)" class="w-1/3 py-3 border border-slate-300 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer">이전</button>
+                    <button type="button" onclick="saveStep2AndNext()" class="w-2/3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow cursor-pointer">저장 후 예산 배분으로 이동</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: 예산 공동 배분 시트 -->
+            <div id="studentStep3" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-3xl mx-auto space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider" id="step3GroupBadge">모둠 미선택</span>
+                        <h2 class="text-xl font-bold text-slate-800 mt-1">예산 공동 배분 시트</h2>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="resetBudgets()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            배분 초기화
+                        </button>
+                        <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl text-right">
+                            <span class="text-xs text-indigo-600 block font-semibold">남은 예산 / 총 예산</span>
+                            <span class="text-xl font-black text-indigo-900"><span id="remainingPoints">500</span> / 500 PT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4" id="budgetItemsContainer">
+                    <!-- JS Rendering -->
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <div>
+                        <span class="text-xs text-slate-500 block">현재 배분 총합</span>
+                        <span id="totalAllocatedText" class="text-2xl font-black text-indigo-600">0 / 500 PT</span>
+                    </div>
+                    <div id="budgetWarning" class="text-xs font-bold px-3 py-1.5 rounded-lg border">
+                        총 500포인트를 맞춰 배분해주세요.
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="goToStep(2)" class="w-1/3 py-3 border border-slate-300 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer">이전</button>
+                    <button type="button" onclick="completeBudgetSubmit()" class="w-2/3 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow cursor-pointer">예산 배분 작성 완료 (전송)</button>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- ==================== TEACHER DASHBOARD ==================== -->
+        <section id="teacherDashboard" class="hidden space-y-6">
+            
+            <!-- Dashboard Sub Header / 2 Page Tabs -->
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="flex space-x-2">
+                    <button type="button" onclick="switchTeacherPage(1)" id="dashTab1" class="px-4 py-2 rounded-lg font-bold text-sm transition bg-indigo-600 text-white shadow-sm cursor-pointer">
+                        1장. 5개 모둠 핵심 요구 & 양보 조건
+                    </button>
+                    <button type="button" onclick="switchTeacherPage(2)" id="dashTab2" class="px-4 py-2 rounded-lg font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer">
+                        2장. 5개 모둠 500P 배분 현황
+                    </button>
+                </div>
+                <div class="text-xs text-slate-500 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 실시간 기기 연동 작동 중
+                </div>
+            </div>
+
+            <!-- TEACHER PAGE 1: 모둠별 핵심 요구 및 양보 조건 -->
+            <div id="teacherPage1" class="space-y-6">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 text-base">5개 모둠별 핵심 요구 및 양보 조건 작성 현황</h3>
+                    <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full border border-indigo-200">실시간 수집중</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="teacherDiscussionGrid">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+
+            <!-- TEACHER PAGE 2: 5개 모둠 예산 배분 요약 (총 500PT) -->
+            <div id="teacherPage2" class="hidden space-y-6">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 text-base">5개 모둠 예산 배분 요약 (총 500PT)</h3>
+                    <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full border border-indigo-200">실시간 수집중</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="teacherGroupGrid">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        // Firebase 설정 정보
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLqxex0TIjVlj3yHa8JOeDEMoMzik1ab4",
+            authDomain: "class-500p-war.firebaseapp.com",
+            databaseURL: "https://class-500p-war-default-rtdb.firebaseio.com",
+            projectId: "class-500p-war",
+            storageBucket: "class-500p-war.firebasestorage.app",
+            messagingSenderId: "128206325253",
+            appId: "1:128206325253:web:cb4fb6f2c76bd3c84efe6c"
+        };
+
+        // Firebase 초기화 및 참조 객체 생성
+        let database = null;
+        let budgetRef = null;
+
+        if (typeof firebase !== 'undefined') {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            budgetRef = database.ref('budgetWarState');
+        }
+
+        const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('budget_war_sync') : null;
+
+        // 5개 대표 집단의 이해관계가 대립하도록 정교화된 6대 사업 항목
+        const PROJECTS = [
+            { id: 'p1', name: '청소년 문화·휴식 전용 공간 조성' },
+            { id: 'p2', name: '어린이보호구역 안전 통학로 & 돌봄센터 구축' },
+            { id: 'p3', name: '어르신 전용 건강 증진 & 이동 편의 시설 확충' },
+            { id: 'p4', name: '전통시장 스마트 환경 개선 & 지역 상권 활성화' },
+            { id: 'p5', name: '생태 공원 조성 & 자원순환(리사이클링) 센터 건립' },
+            { id: 'p6', name: '공공도서관 및 스마트 학습 스페이스 확충' }
+        ];
+
+        // 5개 모둠 정의
+        const GROUPS_INFO = {
+            'A': { name: 'A모둠 — 청소년 대표', desc: '교육·아동·청소년 복지' },
+            'B': { name: 'B모둠 — 학부모 대표', desc: '보육·안전·돌봄' },
+            'C': { name: 'C모둠 — 노년 대표', desc: '노인 복지·이동권·건강' },
+            'D': { name: 'D모둠 — 지역상인 대표', desc: '지역 경제·전통시장·상권' },
+            'E': { name: 'E모둠 — 환경·생태 대표', desc: '탄소중립·공원·자원순환' }
+        };
+
+        let currentGroup = null;
+        let currentStep = 1;
+        let isTeacherView = false;
+        let currentTeacherPage = 1;
+
+        let state = JSON.parse(localStorage.getItem('budgetWarState')) || {
+            allocations: {
+                'A': { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+                'B': { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+                'C': { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+                'D': { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+                'E': { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 }
+            },
+            discussions: {
+                'A': { demand: '', concession: '' },
+                'B': { demand: '', concession: '' },
+                'C': { demand: '', concession: '' },
+                'D': { demand: '', concession: '' },
+                'E': { demand: '', concession: '' }
+            }
+        };
+
+        // 데이터 저장 및 실시간 동기화 전송 (Firebase & BroadcastChannel & localStorage)
+        function saveAndBroadcastState() {
+            localStorage.setItem('budgetWarState', JSON.stringify(state));
+            if (channel) channel.postMessage(state);
+            if (budgetRef) {
+                budgetRef.set(state);
+            }
+        }
+
+        // Firebase 실시간 수신 이벤트 설정
+        if (budgetRef) {
+            budgetRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    state = data;
+                    localStorage.setItem('budgetWarState', JSON.stringify(state));
+                    if (currentStep === 3) renderStep3BudgetSheet();
+                    if (isTeacherView) renderTeacherDashboard();
+                }
+            });
+        }
+
+        if (channel) {
+            channel.onmessage = (event) => {
+                if (event.data) {
+                    state = event.data;
+                    localStorage.setItem('budgetWarState', JSON.stringify(state));
+                    if (currentStep === 3) renderStep3BudgetSheet();
+                    if (isTeacherView) renderTeacherDashboard();
+                }
+            };
+        }
+
+        function selectRole(group) {
+            currentGroup = group;
+            ['A', 'B', 'C', 'D', 'E'].forEach(g => {
+                const btn = document.getElementById(`roleOpt${g}`);
+                if (btn) {
+                    if (g === group) {
+                        btn.className = "role-opt-btn p-4 rounded-xl border-2 text-left border-indigo-600 bg-indigo-50 shadow-md space-y-1 cursor-pointer";
+                    } else {
+                        btn.className = "role-opt-btn p-4 rounded-xl border-2 text-left border-slate-200 hover:border-indigo-500 transition space-y-1 cursor-pointer opacity-70";
+                    }
+                }
+            });
+        }
+
+        function goToStep(step) {
+            if (step === 2 && !currentGroup) {
+                alert("A, B, C, D, E 모둠 중 소속된 모둠 역할을 먼저 선택해 주세요!");
+                return;
+            }
+
+            currentStep = step;
+            
+            for (let i = 1; i <= 3; i++) {
+                const stepElem = document.getElementById(`studentStep${i}`);
+                if (stepElem) stepElem.classList.add('hidden');
+            }
+            
+            const targetStep = document.getElementById(`studentStep${step}`);
+            if (targetStep) targetStep.classList.remove('hidden');
+
+            for (let i = 1; i <= 3; i++) {
+                const ind = document.getElementById(`stepIndicator${i}`);
+                if (ind) {
+                    if (i === step) {
+                        ind.className = "flex items-center gap-2 text-indigo-600 font-bold";
+                        ind.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center";
+                    } else if (i < step) {
+                        ind.className = "flex items-center gap-2 text-emerald-600 font-bold";
+                        ind.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center";
+                    } else {
+                        ind.className = "flex items-center gap-2 text-slate-400 font-bold";
+                        ind.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center";
+                    }
+                }
+            }
+
+            if (currentGroup) {
+                const groupInfo = GROUPS_INFO[currentGroup];
+                const badge2 = document.getElementById('step2GroupBadge');
+                const badge3 = document.getElementById('step3GroupBadge');
+                if (badge2) badge2.innerText = `${groupInfo.name} (${groupInfo.desc})`;
+                if (badge3) badge3.innerText = `${groupInfo.name} (${groupInfo.desc})`;
+
+                if (state.discussions[currentGroup]) {
+                    const inputDemand = document.getElementById('inputDemand');
+                    const inputConcession = document.getElementById('inputConcession');
+                    if (inputDemand) inputDemand.value = state.discussions[currentGroup].demand || '';
+                    if (inputConcession) inputConcession.value = state.discussions[currentGroup].concession || '';
+                }
+            }
+
+            if (step === 3) renderStep3BudgetSheet();
+        }
+
+        function saveStep2AndNext() {
+            if (!currentGroup) {
+                alert("모둠 선택이 완료되지 않았습니다.");
+                return;
+            }
+            const demand = document.getElementById('inputDemand').value;
+            const concession = document.getElementById('inputConcession').value;
+            state.discussions[currentGroup] = { demand, concession };
+            saveAndBroadcastState();
+            goToStep(3);
+        }
+
+        function renderStep3BudgetSheet() {
+            const container = document.getElementById('budgetItemsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let currentTotal = 0;
+            const alloc = state.allocations[currentGroup] || {};
+
+            PROJECTS.forEach(proj => {
+                const allocated = alloc[proj.id] || 0;
+                currentTotal += allocated;
+
+                const card = document.createElement('div');
+                card.className = "p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+                card.innerHTML = `
+                    <div class="font-bold text-slate-800 text-base">${proj.name}</div>
+                    <div class="flex items-center gap-3">
+                        <input type="number" min="0" step="5" value="${allocated}"
+                            onchange="updateAllocation('${proj.id}', this.value)"
+                            class="w-28 text-right font-bold text-indigo-600 border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <span class="font-bold text-slate-600 text-sm">PT</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('totalAllocatedText').innerText = `${currentTotal} / 500 PT`;
+            document.getElementById('remainingPoints').innerText = `${500 - currentTotal}`;
+
+            const warning = document.getElementById('budgetWarning');
+            if (currentTotal === 500) {
+                warning.className = "text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200";
+                warning.innerText = "정확히 500포인트입니다.";
+            } else if (currentTotal > 500) {
+                warning.className = "text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200";
+                warning.innerText = `초과! ${currentTotal - 500}포인트를 감축하세요.`;
+            } else {
+                warning.className = "text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200";
+                warning.innerText = `남음! ${500 - currentTotal}포인트를 더 배분하세요.`;
+            }
+        }
+
+        function updateAllocation(projectId, value) {
+            let val = parseInt(value, 10) || 0;
+            val = Math.round(val / 5) * 5;
+            if (!state.allocations[currentGroup]) state.allocations[currentGroup] = {};
+            state.allocations[currentGroup][projectId] = val;
+            renderStep3BudgetSheet();
+            saveAndBroadcastState();
+        }
+
+        function resetBudgets() {
+            if (confirm("현재 모둠의 예산 배분 내역을 모두 0PT로 초기화하시겠습니까?")) {
+                PROJECTS.forEach(proj => {
+                    state.allocations[currentGroup][proj.id] = 0;
+                });
+                renderStep3BudgetSheet();
+                saveAndBroadcastState();
+            }
+        }
+
+        function completeBudgetSubmit() {
+            saveAndBroadcastState();
+            alert(`${GROUPS_INFO[currentGroup].name}의 예산 배분 내역이 저장·전송되었습니다.`);
+        }
+
+        function toggleView() {
+            isTeacherView = !isTeacherView;
+            const studentView = document.getElementById('studentView');
+            const teacherDashboard = document.getElementById('teacherDashboard');
+            const badge = document.getElementById('currentViewBadge');
+            const btn = document.getElementById('toggleRoleBtn');
+
+            if (isTeacherView) {
+                studentView.classList.add('hidden');
+                teacherDashboard.classList.remove('hidden');
+                badge.innerText = "교사 대시보드";
+                badge.className = "text-xs bg-amber-400 text-indigo-950 font-bold px-3 py-1 rounded-full";
+                btn.innerHTML = `학생 화면으로 돌아가기`;
+                renderTeacherDashboard();
+            } else {
+                teacherDashboard.classList.add('hidden');
+                studentView.classList.remove('hidden');
+                badge.innerText = "학생용 화면";
+                badge.className = "text-xs bg-indigo-800 px-3 py-1 rounded-full text-indigo-200 border border-indigo-700";
+                btn.innerHTML = `교사 대시보드 전환`;
+            }
+        }
+
+        function switchTeacherPage(pageNum) {
+            currentTeacherPage = pageNum;
+            for (let i = 1; i <= 2; i++) {
+                document.getElementById(`teacherPage${i}`).classList.add('hidden');
+                document.getElementById(`dashTab${i}`).className = "px-4 py-2 rounded-lg font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer";
+            }
+
+            document.getElementById(`teacherPage${pageNum}`).classList.remove('hidden');
+            document.getElementById(`dashTab${pageNum}`).className = "px-4 py-2 rounded-lg font-bold text-sm transition bg-indigo-600 text-white shadow-sm cursor-pointer";
+        }
+
+        function renderTeacherDashboard() {
+            const discGrid = document.getElementById('teacherDiscussionGrid');
+            if (discGrid) {
+                discGrid.innerHTML = '';
+                ['A', 'B', 'C', 'D', 'E'].forEach(g => {
+                    const disc = state.discussions[g] || {};
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-5 rounded-xl border border-slate-200 text-xs space-y-3 shadow-sm";
+                    card.innerHTML = `
+                        <div class="border-b border-slate-100 pb-2">
+                            <div class="font-bold text-indigo-900 text-sm">${GROUPS_INFO[g].name}</div>
+                            <div class="text-xs text-slate-500">${GROUPS_INFO[g].desc}</div>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="font-bold text-slate-700 text-xs block">📌 핵심 요구 및 주장 근거:</span>
+                            <p class="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-line">${disc.demand || '아직 작성되지 않았습니다.'}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="font-bold text-slate-700 text-xs block">🤝 양보 가능한 조건 (협상 대안):</span>
+                            <p class="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-line">${disc.concession || '아직 작성되지 않았습니다.'}</p>
+                        </div>
+                    `;
+                    discGrid.appendChild(card);
+                });
+            }
+
+            const grid = document.getElementById('teacherGroupGrid');
+            if (grid) {
+                grid.innerHTML = '';
+                ['A', 'B', 'C', 'D', 'E'].forEach(g => {
+                    const alloc = state.allocations[g] || {};
+                    let total = 0;
+
+                    let itemsHtml = PROJECTS.map(p => {
+                        const cost = alloc[p.id] || 0;
+                        total += cost;
+                        return `
+                            <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-100 last:border-0">
+                                <span class="text-slate-600">${p.name}</span>
+                                <span class="font-bold text-slate-800">${cost} PT</span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const isPerfect = total === 500;
+                    const totalBadge = isPerfect
+                        ? `<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">500 PT (합계 일치)</span>`
+                        : `<span class="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">${total} PT (조정 필요)</span>`;
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <div>
+                                <span class="font-bold text-base text-slate-800 block">${GROUPS_INFO[g].name}</span>
+                                <span class="text-xs text-slate-500">${GROUPS_INFO[g].desc}</span>
+                            </div>
+                            ${totalBadge}
+                        </div>
+                        <div class="space-y-1">
+                            ${itemsHtml}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
